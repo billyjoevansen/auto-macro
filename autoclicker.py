@@ -99,6 +99,8 @@ class AutoMacroApp(tk.Tk):
         self.loop_count = 0
         self.capturing = False
         self.capture_listener = None
+        self._hk_listener = None
+        self._rk_listener = None
 
         # Settings vars
         self.loop_delay_var    = tk.DoubleVar(value=1.0)
@@ -670,34 +672,34 @@ class AutoMacroApp(tk.Tk):
             self._refresh_tree()
 
     # ── Hotkey ───────────────────────────────────────────────────────────────────
-    def _setup_hotkey(self):
-        hk = self.hotkey_var.get().strip()
-        if hasattr(self, "_hk_listener") and self._hk_listener:
+    KEY_MAP = {
+        **{f"F{i}": f"<f{i}>" for i in range(1, 13)},
+        "ESCAPE": "<esc>", "ESC": "<esc>",
+        "TAB": "<tab>", "SPACE": "<space>",
+        "HOME": "<home>", "END": "<end>",
+        "INSERT": "<insert>", "DELETE": "<delete>",
+        "PAUSE": "<pause>",
+    }
+
+    def _stop_listener(self, attr):
+        listener = getattr(self, attr, None)
+        if listener is not None:
             try:
-                self._hk_listener.stop()
+                listener.stop()
             except Exception:
                 pass
+            setattr(self, attr, None)
 
+    def _setup_hotkey(self):
+        self._stop_listener("_hk_listener")
+        hk = self.hotkey_var.get().strip()
+        key_str = self.KEY_MAP.get(hk.upper())
+        if not key_str:
+            messagebox.showwarning("Hotkey",
+                f"'{hk}' is not recognised.\nUse F1–F12 or: ESC, TAB, SPACE, HOME, END, INSERT, DELETE, PAUSE.")
+            return
         try:
-            key_map = {f"F{i}": getattr(keyboard.Key, f"f{i}") for i in range(1, 13)}
-            key_map.update({
-                "ESCAPE": keyboard.Key.esc,
-                "ESC":    keyboard.Key.esc,
-                "TAB":    keyboard.Key.tab,
-                "SPACE":  keyboard.Key.space,
-                "HOME":   keyboard.Key.home,
-                "END":    keyboard.Key.end,
-                "INSERT": keyboard.Key.insert,
-                "DELETE": keyboard.Key.delete,
-                "PAUSE":  keyboard.Key.pause,
-            })
-            key_obj = key_map.get(hk.upper())
-
-            def on_press(k):
-                if k == key_obj:
-                    self.after(0, self._toggle)
-
-            self._hk_listener = keyboard.Listener(on_press=on_press)
+            self._hk_listener = keyboard.GlobalHotKeys({key_str: lambda: self.after(0, self._toggle)})
             self._hk_listener.daemon = True
             self._hk_listener.start()
         except Exception as e:
@@ -705,29 +707,15 @@ class AutoMacroApp(tk.Tk):
 
     def _setup_record_hotkey(self):
         """Bind the bulk-add hotkey: press it anytime to snapshot current mouse position as a new step."""
+        self._stop_listener("_rk_listener")
         hk = self.record_hotkey_var.get().strip()
-        if hasattr(self, "_rk_listener") and self._rk_listener:
-            try:
-                self._rk_listener.stop()
-            except Exception:
-                pass
-
+        key_str = self.KEY_MAP.get(hk.upper())
+        if not key_str:
+            messagebox.showwarning("Record Hotkey",
+                f"'{hk}' is not recognised.\nUse F1–F12 or: ESC, TAB, SPACE, HOME, END, INSERT, DELETE, PAUSE.")
+            return
         try:
-            key_map = {f"F{i}": getattr(keyboard.Key, f"f{i}") for i in range(1, 13)}
-            key_map.update({
-                "ESCAPE": keyboard.Key.esc, "ESC":    keyboard.Key.esc,
-                "TAB":    keyboard.Key.tab, "SPACE":  keyboard.Key.space,
-                "HOME":   keyboard.Key.home,"END":    keyboard.Key.end,
-                "INSERT": keyboard.Key.insert,"DELETE": keyboard.Key.delete,
-                "PAUSE":  keyboard.Key.pause,
-            })
-            key_obj = key_map.get(hk.upper())
-
-            def on_press(k):
-                if k == key_obj:
-                    self.after(0, self._record_step)
-
-            self._rk_listener = keyboard.Listener(on_press=on_press)
+            self._rk_listener = keyboard.GlobalHotKeys({key_str: lambda: self.after(0, self._record_step)})
             self._rk_listener.daemon = True
             self._rk_listener.start()
         except Exception as e:
@@ -931,10 +919,11 @@ class AutoMacroApp(tk.Tk):
             self.delay_max_var.set(data.get("delay_max", 0.7))
             self.steps = [ClickStep.from_dict(d) for d in data.get("steps", [])]
             self._refresh_tree()
-            self._setup_hotkey()
-            self._setup_record_hotkey()
         except Exception:
             pass  # corrupted autosave — start fresh
+        # Always re-setup hotkeys regardless of whether autosave loaded cleanly
+        self._setup_hotkey()
+        self._setup_record_hotkey()
 
     def on_close(self):
         self.running = False
