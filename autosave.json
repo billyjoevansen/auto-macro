@@ -1,7 +1,11 @@
 {
-  "loop_delay": 0.0,
+  "loop_delay": 13.5,
   "repeat": "\u221e",
   "hotkey": "ESC",
   "record_hotkey": "F8",
+  "jitter": 0,
+  "delay_random": false,
+  "delay_min": 0.3,
+  "delay_max": 0.7,
   "steps": []
 }

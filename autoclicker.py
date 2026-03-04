@@ -18,6 +18,8 @@ import threading
 import time
 import json
 import os
+import random
+import math
 
 try:
     import pyautogui
@@ -37,19 +39,29 @@ except ImportError:
 AUTOSAVE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "autosave.json")
 
 # ─── Color Palette ──────────────────────────────────────────────────────────────
-BG        = "#0d1117"
-SURFACE   = "#161b22"
-SURFACE2  = "#21262d"
-BORDER    = "#30363d"
-ACCENT    = "#58a6ff"
-ACCENT2   = "#3fb950"
-DANGER    = "#f85149"
-WARN      = "#d29922"
-TEXT      = "#e6edf3"
-TEXT_DIM  = "#8b949e"
-FONT_MONO = ("Cascadia Code", 10) if os.name == "nt" else ("DejaVu Sans Mono", 10)
-FONT_UI   = ("Segoe UI", 10) if os.name == "nt" else ("Ubuntu", 10)
-FONT_BIG  = ("Segoe UI", 13, "bold") if os.name == "nt" else ("Ubuntu", 13, "bold")
+BG        = "#07090f"
+SURFACE   = "#0e1117"
+SURFACE2  = "#151b26"
+SURFACE3  = "#1c2535"
+BORDER    = "#253047"
+BORDER2   = "#1a2438"
+ACCENT    = "#38bdf8"
+ACCENT2   = "#34d399"
+DANGER    = "#f87171"
+WARN      = "#fb923c"
+TEXT      = "#e2e8f0"
+TEXT_DIM  = "#4b637a"
+TEXT_MID  = "#7a94b0"
+PILL_BG   = "#0f1f35"
+
+_is_win      = os.name == "nt"
+FONT_MONO    = ("Cascadia Code", 10)      if _is_win else ("DejaVu Sans Mono", 10)
+FONT_MONO_SM = ("Cascadia Code", 9)       if _is_win else ("DejaVu Sans Mono", 9)
+FONT_UI      = ("Segoe UI", 10)           if _is_win else ("Ubuntu", 10)
+FONT_UI_SM   = ("Segoe UI", 9)            if _is_win else ("Ubuntu", 9)
+FONT_UI_B    = ("Segoe UI", 10, "bold")   if _is_win else ("Ubuntu", 10, "bold")
+FONT_BIG     = ("Segoe UI", 13, "bold")   if _is_win else ("Ubuntu", 13, "bold")
+FONT_HEAD    = ("Segoe UI", 17, "bold")   if _is_win else ("Ubuntu", 17, "bold")
 
 
 # ─── Data Model ─────────────────────────────────────────────────────────────────
@@ -75,8 +87,8 @@ class AutoMacroApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("AutoMacro")
-        self.geometry("780x640")
-        self.minsize(720, 560)
+        self.geometry("840x660")
+        self.minsize(740, 560)
         self.configure(bg=BG)
         self.resizable(True, True)
 
@@ -93,6 +105,10 @@ class AutoMacroApp(tk.Tk):
         self.repeat_var        = tk.StringVar(value="∞")   # number or ∞
         self.hotkey_var        = tk.StringVar(value="F6")
         self.record_hotkey_var = tk.StringVar(value="F8")  # bulk-add hotkey
+        self.jitter_var        = tk.IntVar(value=0)        # pixel jitter radius
+        self.delay_min_var     = tk.DoubleVar(value=0.3)   # random delay range min
+        self.delay_max_var     = tk.DoubleVar(value=0.7)   # random delay range max
+        self.delay_random_var  = tk.BooleanVar(value=False) # enable random delay
         self.status_var        = tk.StringVar(value="Idle")
 
         # Auto-save whenever settings change
@@ -100,6 +116,10 @@ class AutoMacroApp(tk.Tk):
         self.repeat_var.trace_add("write",        lambda *_: self._autosave())
         self.hotkey_var.trace_add("write",        lambda *_: self._autosave())
         self.record_hotkey_var.trace_add("write", lambda *_: self._autosave())
+        self.jitter_var.trace_add("write",        lambda *_: self._autosave())
+        self.delay_min_var.trace_add("write",     lambda *_: self._autosave())
+        self.delay_max_var.trace_add("write",     lambda *_: self._autosave())
+        self.delay_random_var.trace_add("write",  lambda *_: self._autosave())
 
         self._build_ui()
         self._setup_hotkey()
@@ -109,177 +129,378 @@ class AutoMacroApp(tk.Tk):
 
     # ── UI Construction ──────────────────────────────────────────────────────────
     def _build_ui(self):
-        # Title bar
-        header = tk.Frame(self, bg=BG, pady=12)
-        header.pack(fill="x", padx=20)
-        tk.Label(header, text="⚡ AutoMacro", font=("Segoe UI", 18, "bold") if os.name == "nt" else ("Ubuntu", 18, "bold"),
+        # ── Header ───────────────────────────────────────────────────────────────
+        header = tk.Frame(self, bg=BG)
+        header.pack(fill="x", padx=0, pady=0)
+
+        inner_hdr = tk.Frame(header, bg=BG)
+        inner_hdr.pack(fill="x", padx=20, pady=(14, 12))
+
+        logo_frame = tk.Frame(inner_hdr, bg=BG)
+        logo_frame.pack(side="left")
+        tk.Label(logo_frame, text="⚡", font=("Segoe UI", 20) if _is_win else ("Ubuntu", 20),
                  bg=BG, fg=ACCENT).pack(side="left")
-        tk.Label(header, text="Desktop Game Macro Tool", font=FONT_UI,
-                 bg=BG, fg=TEXT_DIM).pack(side="left", padx=(10, 0), pady=(4, 0))
+        tk.Label(logo_frame, text=" AutoMacro", font=FONT_HEAD,
+                 bg=BG, fg=TEXT).pack(side="left")
+        tk.Label(logo_frame, text="  ·  Desktop Macro Tool", font=FONT_UI_SM,
+                 bg=BG, fg=TEXT_DIM).pack(side="left", pady=(3, 0))
 
-        # Status badge
-        self.status_label = tk.Label(header, textvariable=self.status_var,
-                                     font=(FONT_UI[0], 10, "bold"), bg=SURFACE2,
-                                     fg=TEXT_DIM, padx=12, pady=4, relief="flat")
-        self.status_label.pack(side="right")
+        # Status badge (right-aligned)
+        badge_frame = tk.Frame(inner_hdr, bg=PILL_BG,
+                               highlightbackground=BORDER, highlightthickness=1)
+        badge_frame.pack(side="right")
+        self.status_dot = tk.Label(badge_frame, text="●", font=FONT_UI_SM,
+                                   bg=PILL_BG, fg=TEXT_DIM, padx=6, pady=4)
+        self.status_dot.pack(side="left")
+        self.status_label = tk.Label(badge_frame, textvariable=self.status_var,
+                                     font=FONT_UI_B, bg=PILL_BG,
+                                     fg=TEXT_MID, padx=8, pady=4)
+        self.status_label.pack(side="left")
 
-        # Main paned area
+        # Thin accent line below header
+        tk.Frame(self, bg=BORDER2, height=1).pack(fill="x")
+
+        # ── Main area ────────────────────────────────────────────────────────────
         main = tk.Frame(self, bg=BG)
-        main.pack(fill="both", expand=True, padx=20, pady=(0, 10))
+        main.pack(fill="both", expand=True, padx=16, pady=12)
 
-        # Left: sequence list
+        # ── Left: sequence list ───────────────────────────────────────────────
         left = tk.Frame(main, bg=BG)
-        left.pack(side="left", fill="both", expand=True)
+        left.pack(side="left", fill="both", expand=True, padx=(0, 10))
 
         self._section(left, "CLICK SEQUENCE")
 
-        list_frame = tk.Frame(left, bg=SURFACE, highlightbackground=BORDER,
-                              highlightthickness=1)
-        list_frame.pack(fill="both", expand=True)
+        # Treeview card
+        list_card = tk.Frame(left, bg=SURFACE, highlightbackground=BORDER,
+                             highlightthickness=1)
+        list_card.pack(fill="both", expand=True)
 
         cols = ("step", "x", "y", "button", "delay", "description")
-        self.tree = ttk.Treeview(list_frame, columns=cols, show="headings",
+        self.tree = ttk.Treeview(list_card, columns=cols, show="headings",
                                  selectmode="browse")
         self._style_tree()
 
-        hdrs = [("#", 36), ("X", 60), ("Y", 60), ("Btn", 56), ("Delay(s)", 72), ("Note", 200)]
+        hdrs = [("#", 32), ("X", 64), ("Y", 64), ("Btn", 58), ("Delay(s)", 76), ("Note", 180)]
         for col, (label, w) in zip(cols, hdrs):
             self.tree.heading(col, text=label)
-            self.tree.column(col, width=w, anchor="center" if label != "Note" else "w",
+            self.tree.column(col, width=w,
+                             anchor="center" if label != "Note" else "w",
                              stretch=(label == "Note"))
         self.tree.pack(fill="both", expand=True, side="left")
 
-        sb = ttk.Scrollbar(list_frame, orient="vertical", command=self.tree.yview)
+        sb = ttk.Scrollbar(list_card, orient="vertical", command=self.tree.yview)
         sb.pack(side="right", fill="y")
         self.tree.configure(yscrollcommand=sb.set)
 
-        # Sequence buttons
-        seq_btns = tk.Frame(left, bg=BG, pady=6)
-        seq_btns.pack(fill="x")
-        self._btn(seq_btns, "＋ Add Step",    ACCENT,  self._add_step).pack(side="left", padx=(0,4))
-        self._btn(seq_btns, "✎ Edit",         WARN,    self._edit_step).pack(side="left", padx=4)
-        self._btn(seq_btns, "✕ Remove",       DANGER,  self._remove_step).pack(side="left", padx=4)
-        self._btn(seq_btns, "▲ Up",           TEXT_DIM, self._move_up).pack(side="left", padx=4)
-        self._btn(seq_btns, "▼ Down",         TEXT_DIM, self._move_down).pack(side="left", padx=4)
-        self._btn(seq_btns, "🗑 Clear All",   DANGER,   self._clear_all_steps).pack(side="left", padx=4)
+        # Toolbar below sequence
+        toolbar = tk.Frame(left, bg=BG, pady=7)
+        toolbar.pack(fill="x")
 
-        # Right panel
-        right = tk.Frame(main, bg=BG, width=200)
-        right.pack(side="right", fill="y", padx=(14, 0))
-        right.pack_propagate(False)
+        # Left group: mutating actions
+        grp_left = tk.Frame(toolbar, bg=SURFACE2,
+                            highlightbackground=BORDER, highlightthickness=1)
+        grp_left.pack(side="left")
+        self._tbtn(grp_left, "＋ Add",    ACCENT,   self._add_step,        first=True)
+        self._tbtn_sep(grp_left)
+        self._tbtn(grp_left, "✎ Edit",    WARN,     self._edit_step)
+        self._tbtn_sep(grp_left)
+        self._tbtn(grp_left, "✕ Remove",  DANGER,   self._remove_step)
 
-        # Capture
+        # Middle group: reorder
+        grp_mid = tk.Frame(toolbar, bg=SURFACE2,
+                           highlightbackground=BORDER, highlightthickness=1)
+        grp_mid.pack(side="left", padx=(6, 0))
+        self._tbtn(grp_mid, "▲",  TEXT_MID, self._move_up,   first=True)
+        self._tbtn_sep(grp_mid)
+        self._tbtn(grp_mid, "▼",  TEXT_MID, self._move_down)
+
+        # Right: destructive
+        grp_right = tk.Frame(toolbar, bg=SURFACE2,
+                             highlightbackground=BORDER, highlightthickness=1)
+        grp_right.pack(side="left", padx=(6, 0))
+        self._tbtn(grp_right, "🗑 Clear", DANGER, self._clear_all_steps, first=True)
+
+        # ── Right panel ───────────────────────────────────────────────────────
+        right_outer = tk.Frame(main, bg=BG, width=256)
+        right_outer.pack(side="right", fill="y")
+        right_outer.pack_propagate(False)
+
+        # Scrollable right panel
+        right_canvas = tk.Canvas(right_outer, bg=BG, highlightthickness=0,
+                                 width=256)
+        right_canvas.pack(side="left", fill="both", expand=True)
+        right_vsb = ttk.Scrollbar(right_outer, orient="vertical",
+                                  command=right_canvas.yview)
+        right_vsb.pack(side="right", fill="y")
+        right_canvas.configure(yscrollcommand=right_vsb.set)
+
+        right = tk.Frame(right_canvas, bg=BG)
+        right_win = right_canvas.create_window((0, 0), window=right, anchor="nw")
+
+        def _on_right_configure(e):
+            right_canvas.configure(scrollregion=right_canvas.bbox("all"))
+            right_canvas.itemconfig(right_win, width=right_canvas.winfo_width())
+        right.bind("<Configure>", _on_right_configure)
+        right_canvas.bind("<Configure>",
+                          lambda e: right_canvas.itemconfig(right_win, width=e.width))
+
+        def _on_mousewheel(e):
+            right_canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
+        right_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+        # ── Capture card ─────────────────────────────────────────────────────
         self._section(right, "MOUSE CAPTURE")
-        cap_box = tk.Frame(right, bg=SURFACE, highlightbackground=BORDER,
-                           highlightthickness=1, pady=10, padx=10)
-        cap_box.pack(fill="x")
-        tk.Label(cap_box, text="Click anywhere to record\nposition after pressing Capture.",
-                 bg=SURFACE, fg=TEXT_DIM, font=FONT_UI, justify="left").pack(anchor="w")
-        self.cap_btn = self._btn(cap_box, "🎯 Capture Position", ACCENT2, self._start_capture)
-        self.cap_btn.pack(fill="x", pady=(8, 0))
-        self.cap_coords = tk.Label(cap_box, text="─ waiting ─", bg=SURFACE,
-                                   fg=TEXT_DIM, font=FONT_MONO)
-        self.cap_coords.pack(pady=(6, 0))
+        cap_card = tk.Frame(right, bg=SURFACE, highlightbackground=BORDER,
+                            highlightthickness=1)
+        cap_card.pack(fill="x", pady=(0, 2))
 
-        # Macro settings
-        self._section(right, "MACRO SETTINGS")
+        cap_inner = tk.Frame(cap_card, bg=SURFACE, padx=12, pady=10)
+        cap_inner.pack(fill="x")
+        tk.Label(cap_inner, text="Click anywhere on screen after\npressing Capture to record XY.",
+                 bg=SURFACE, fg=TEXT_MID, font=FONT_UI_SM, justify="left").pack(anchor="w")
+
+        self.cap_btn = self._btn(cap_inner, "🎯  Capture Position",
+                                 ACCENT2, self._start_capture)
+        self.cap_btn.pack(fill="x", pady=(8, 4))
+        self.cap_coords = tk.Label(cap_inner, text="─  waiting ─",
+                                   bg=SURFACE, fg=TEXT_DIM, font=FONT_MONO_SM)
+        self.cap_coords.pack()
+
+        # ── Settings card ────────────────────────────────────────────────────
+        self._section(right, "SETTINGS")
         cfg = tk.Frame(right, bg=SURFACE, highlightbackground=BORDER,
-                       highlightthickness=1, padx=10, pady=10)
-        cfg.pack(fill="x")
+                       highlightthickness=1)
+        cfg.pack(fill="x", pady=(0, 2))
+        cfg_inner = tk.Frame(cfg, bg=SURFACE, padx=12, pady=10)
+        cfg_inner.pack(fill="x")
 
-        self._row(cfg, "Loop delay (s):", self.loop_delay_var, 0, 60, 0.1)
-        tk.Label(cfg, text="Repeat count (∞ = forever):", bg=SURFACE,
-                 fg=TEXT_DIM, font=FONT_UI).pack(anchor="w", pady=(8, 2))
-        repeat_entry = tk.Entry(cfg, textvariable=self.repeat_var, bg=SURFACE2,
-                                fg=TEXT, insertbackground=TEXT, relief="flat",
-                                highlightbackground=BORDER, highlightthickness=1,
-                                font=FONT_MONO, width=8)
-        repeat_entry.pack(anchor="w")
+        self._row(cfg_inner, "Loop delay (s)", self.loop_delay_var, 0, 60, 0.1)
+        self._vspace(cfg_inner, 6)
+        self._row(cfg_inner, "Jitter radius (px)", self.jitter_var, 0, 50, 1)
 
-        tk.Label(cfg, text="Toggle hotkey:", bg=SURFACE,
-                 fg=TEXT_DIM, font=FONT_UI).pack(anchor="w", pady=(8, 2))
-        hk_frame = tk.Frame(cfg, bg=SURFACE)
-        hk_frame.pack(fill="x")
-        hk_entry = tk.Entry(hk_frame, textvariable=self.hotkey_var, bg=SURFACE2,
-                            fg=ACCENT, insertbackground=TEXT, relief="flat",
-                            highlightbackground=BORDER, highlightthickness=1,
-                            font=FONT_MONO, width=6)
-        hk_entry.pack(side="left")
-        self._btn(hk_frame, "Set", ACCENT, self._setup_hotkey, small=True).pack(side="left", padx=(6,0))
+        # Divider
+        self._vspace(cfg_inner, 10)
+        tk.Frame(cfg_inner, bg=BORDER2, height=1).pack(fill="x")
+        self._vspace(cfg_inner, 8)
 
-        tk.Label(cfg, text="Record step hotkey:", bg=SURFACE,
-                 fg=TEXT_DIM, font=FONT_UI).pack(anchor="w", pady=(8, 2))
-        rk_frame = tk.Frame(cfg, bg=SURFACE)
-        rk_frame.pack(fill="x")
-        rk_entry = tk.Entry(rk_frame, textvariable=self.record_hotkey_var, bg=SURFACE2,
-                            fg=WARN, insertbackground=TEXT, relief="flat",
-                            highlightbackground=BORDER, highlightthickness=1,
-                            font=FONT_MONO, width=6)
-        rk_entry.pack(side="left")
-        self._btn(rk_frame, "Set", WARN, self._setup_record_hotkey, small=True).pack(side="left", padx=(6,0))
-        tk.Label(cfg, text="Press to snap current\nmouse pos as a new step",
-                 bg=SURFACE, fg=TEXT_DIM, font=(FONT_UI[0], 8)).pack(anchor="w", pady=(2, 0))
+        # Random delay toggle row
+        rnd_hdr = tk.Frame(cfg_inner, bg=SURFACE)
+        rnd_hdr.pack(fill="x")
+        tk.Label(rnd_hdr, text="Randomise step delay",
+                 bg=SURFACE, fg=TEXT_MID, font=FONT_UI_SM).pack(side="left")
+        self.rnd_toggle = tk.Checkbutton(
+            rnd_hdr, variable=self.delay_random_var,
+            bg=SURFACE, fg=ACCENT, selectcolor=SURFACE3,
+            activebackground=SURFACE, relief="flat", cursor="hand2",
+            command=self._update_rnd_state)
+        self.rnd_toggle.pack(side="right")
 
-        # Run / stop controls
+        # Min / Max row
+        rnd_row = tk.Frame(cfg_inner, bg=SURFACE)
+        rnd_row.pack(fill="x", pady=(5, 0))
+
+        rnd_left = tk.Frame(rnd_row, bg=SURFACE)
+        rnd_left.pack(side="left", fill="x", expand=True)
+        tk.Label(rnd_left, text="Min (s)", bg=SURFACE, fg=TEXT_DIM,
+                 font=FONT_UI_SM).pack(anchor="w")
+        self.rnd_min_entry = tk.Entry(
+            rnd_left, textvariable=self.delay_min_var,
+            bg=SURFACE2, fg=ACCENT, insertbackground=TEXT, relief="flat",
+            highlightbackground=BORDER, highlightthickness=1,
+            font=FONT_MONO_SM, width=6)
+        self.rnd_min_entry.pack(anchor="w", pady=(2, 0))
+
+        rnd_right = tk.Frame(rnd_row, bg=SURFACE)
+        rnd_right.pack(side="right", fill="x", expand=True)
+        tk.Label(rnd_right, text="Max (s)", bg=SURFACE, fg=TEXT_DIM,
+                 font=FONT_UI_SM).pack(anchor="w")
+        self.rnd_max_entry = tk.Entry(
+            rnd_right, textvariable=self.delay_max_var,
+            bg=SURFACE2, fg=ACCENT, insertbackground=TEXT, relief="flat",
+            highlightbackground=BORDER, highlightthickness=1,
+            font=FONT_MONO_SM, width=6)
+        self.rnd_max_entry.pack(anchor="w", pady=(2, 0))
+
+        tk.Label(cfg_inner, text="Overrides per-step delay when on.",
+                 bg=SURFACE, fg=TEXT_DIM, font=FONT_UI_SM).pack(anchor="w", pady=(5, 0))
+
+        # Divider
+        self._vspace(cfg_inner, 10)
+        tk.Frame(cfg_inner, bg=BORDER2, height=1).pack(fill="x")
+        self._vspace(cfg_inner, 8)
+
+        # Repeat count
+        rpt_row = tk.Frame(cfg_inner, bg=SURFACE)
+        rpt_row.pack(fill="x")
+        tk.Label(rpt_row, text="Repeat count", bg=SURFACE, fg=TEXT_DIM,
+                 font=FONT_UI_SM).pack(side="left")
+        tk.Label(rpt_row, text="∞ = forever", bg=SURFACE, fg=TEXT_DIM,
+                 font=FONT_UI_SM).pack(side="right")
+        tk.Entry(cfg_inner, textvariable=self.repeat_var,
+                 bg=SURFACE2, fg=TEXT, insertbackground=TEXT, relief="flat",
+                 highlightbackground=BORDER, highlightthickness=1,
+                 font=FONT_MONO, width=10).pack(fill="x", pady=(4, 0))
+
+        # Divider
+        self._vspace(cfg_inner, 10)
+        tk.Frame(cfg_inner, bg=BORDER2, height=1).pack(fill="x")
+        self._vspace(cfg_inner, 8)
+
+        # Hotkeys side-by-side
+        hk_row = tk.Frame(cfg_inner, bg=SURFACE)
+        hk_row.pack(fill="x")
+
+        hk_left = tk.Frame(hk_row, bg=SURFACE)
+        hk_left.pack(side="left", fill="x", expand=True, padx=(0, 4))
+        tk.Label(hk_left, text="Toggle key", bg=SURFACE, fg=TEXT_DIM,
+                 font=FONT_UI_SM).pack(anchor="w")
+        hk_entry_row = tk.Frame(hk_left, bg=SURFACE)
+        hk_entry_row.pack(fill="x", pady=(3, 0))
+        tk.Entry(hk_entry_row, textvariable=self.hotkey_var,
+                 bg=SURFACE2, fg=ACCENT, insertbackground=TEXT, relief="flat",
+                 highlightbackground=BORDER, highlightthickness=1,
+                 font=FONT_MONO_SM, width=5).pack(side="left")
+        self._btn(hk_entry_row, "Set", ACCENT, self._setup_hotkey,
+                  small=True).pack(side="left", padx=(4, 0))
+
+        hk_right = tk.Frame(hk_row, bg=SURFACE)
+        hk_right.pack(side="right", fill="x", expand=True, padx=(4, 0))
+        tk.Label(hk_right, text="Record key", bg=SURFACE, fg=TEXT_DIM,
+                 font=FONT_UI_SM).pack(anchor="w")
+        rk_entry_row = tk.Frame(hk_right, bg=SURFACE)
+        rk_entry_row.pack(fill="x", pady=(3, 0))
+        tk.Entry(rk_entry_row, textvariable=self.record_hotkey_var,
+                 bg=SURFACE2, fg=WARN, insertbackground=TEXT, relief="flat",
+                 highlightbackground=BORDER, highlightthickness=1,
+                 font=FONT_MONO_SM, width=5).pack(side="left")
+        self._btn(rk_entry_row, "Set", WARN, self._setup_record_hotkey,
+                  small=True).pack(side="left", padx=(4, 0))
+
+        # ── Control card ─────────────────────────────────────────────────────
         self._section(right, "CONTROL")
-        ctrl = tk.Frame(right, bg=BG)
-        ctrl.pack(fill="x")
-        self.run_btn = self._btn(ctrl, "▶  START", ACCENT2, self._toggle, big=True)
-        self.run_btn.pack(fill="x", pady=(0, 6))
-        self._btn(ctrl, "💾 Save Sequence", TEXT_DIM, self._save_sequence).pack(fill="x", pady=(0,4))
-        self._btn(ctrl, "📂 Load Sequence", TEXT_DIM, self._load_sequence).pack(fill="x")
+        ctrl_card = tk.Frame(right, bg=SURFACE, highlightbackground=BORDER,
+                             highlightthickness=1)
+        ctrl_card.pack(fill="x", pady=(0, 2))
+        ctrl_inner = tk.Frame(ctrl_card, bg=SURFACE, padx=12, pady=10)
+        ctrl_inner.pack(fill="x")
 
-        # Stats bar
-        stats = tk.Frame(self, bg=SURFACE2, pady=6)
-        stats.pack(fill="x", side="bottom")
-        self.loop_label = tk.Label(stats, text="Loops: 0", bg=SURFACE2,
-                                   fg=TEXT_DIM, font=FONT_UI, padx=14)
+        self.run_btn = tk.Button(
+            ctrl_inner, text="▶   START", bg=ACCENT2, fg=BG,
+            activebackground="#2cb885", activeforeground=BG,
+            font=FONT_BIG, relief="flat", cursor="hand2",
+            padx=10, pady=10, command=self._toggle)
+        self.run_btn.pack(fill="x", pady=(0, 8))
+
+        io_row = tk.Frame(ctrl_inner, bg=SURFACE)
+        io_row.pack(fill="x")
+        self._btn(io_row, "💾 Save", TEXT_MID, self._save_sequence).pack(
+            side="left", fill="x", expand=True, padx=(0, 4))
+        self._btn(io_row, "📂 Load", TEXT_MID, self._load_sequence).pack(
+            side="right", fill="x", expand=True)
+
+        # ── Footer bar ───────────────────────────────────────────────────────
+        footer = tk.Frame(self, bg=SURFACE, highlightbackground=BORDER2,
+                          highlightthickness=1)
+        footer.pack(fill="x", side="bottom")
+        footer_inner = tk.Frame(footer, bg=SURFACE)
+        footer_inner.pack(fill="x", padx=16, pady=5)
+
+        self.loop_label = tk.Label(footer_inner, text="Loops: 0",
+                                   bg=SURFACE, fg=TEXT_MID, font=FONT_UI_SM)
         self.loop_label.pack(side="left")
-        tk.Label(stats, text="Emergency stop: move mouse to top-left corner of screen",
-                 bg=SURFACE2, fg=TEXT_DIM, font=FONT_UI).pack(side="right", padx=14)
+
+        self.step_label = tk.Label(footer_inner, text="Steps: 0",
+                                   bg=SURFACE, fg=TEXT_MID, font=FONT_UI_SM)
+        self.step_label.pack(side="left", padx=(16, 0))
+
+        tk.Label(footer_inner,
+                 text="⚠  Move mouse to top-left corner to emergency stop",
+                 bg=SURFACE, fg=TEXT_DIM, font=FONT_UI_SM).pack(side="right")
+
+        self._update_rnd_state()
 
     def _section(self, parent, title):
-        tk.Frame(parent, bg=BG, height=10).pack(fill="x")   # top spacing
         f = tk.Frame(parent, bg=BG)
-        f.pack_configure(pady=(10, 4))
-        f.pack(fill="x")
-        tk.Label(f, text=title, font=(FONT_UI[0], 8, "bold"), bg=BG,
-                 fg=TEXT_DIM).pack(side="left")
-        tk.Frame(f, bg=BORDER, height=1).pack(side="left", fill="x", expand=True, padx=(8, 0), pady=5)
+        f.pack(fill="x", pady=(10, 4))
+        tk.Label(f, text=title, font=(FONT_UI_SM[0], 8, "bold"),
+                 bg=BG, fg=TEXT_DIM).pack(side="left")
+        tk.Frame(f, bg=BORDER, height=1).pack(
+            side="left", fill="x", expand=True, padx=(8, 0), pady=5)
+
+    def _vspace(self, parent, h):
+        tk.Frame(parent, bg=SURFACE, height=h).pack(fill="x")
+
+    def _tbtn(self, parent, text, color, cmd, first=False):
+        """Toolbar button — flat, in a button-group container."""
+        b = tk.Button(parent, text=text, bg=SURFACE2, fg=color,
+                      activebackground=SURFACE3, activeforeground=color,
+                      font=FONT_UI_SM, relief="flat", cursor="hand2",
+                      padx=10, pady=5, bd=0, command=cmd)
+        b.pack(side="left")
+        b.bind("<Enter>", lambda e: b.config(bg=SURFACE3))
+        b.bind("<Leave>", lambda e: b.config(bg=SURFACE2))
+        return b
+
+    def _tbtn_sep(self, parent):
+        tk.Frame(parent, bg=BORDER, width=1).pack(side="left", fill="y", pady=4)
 
     def _btn(self, parent, text, color, cmd, small=False, big=False):
-        size = (FONT_UI[0], 8) if small else ((FONT_BIG[0], 12, "bold") if big else FONT_UI)
+        size = FONT_UI_SM if small else (FONT_BIG if big else FONT_UI)
         b = tk.Button(parent, text=text, bg=SURFACE2, fg=color,
-                      activebackground=BORDER, activeforeground=color,
+                      activebackground=SURFACE3, activeforeground=color,
                       font=size, relief="flat", cursor="hand2",
                       highlightbackground=BORDER, highlightthickness=1,
-                      padx=10, pady=6 if big else 5,
-                      command=cmd)
+                      padx=8, pady=5 if not big else 8, command=cmd)
+        b.bind("<Enter>", lambda e: b.config(bg=SURFACE3))
+        b.bind("<Leave>", lambda e: b.config(bg=SURFACE2))
         return b
 
     def _row(self, parent, label, var, from_, to, res):
-        tk.Label(parent, text=label, bg=SURFACE, fg=TEXT_DIM, font=FONT_UI).pack(anchor="w")
+        tk.Label(parent, text=label, bg=SURFACE, fg=TEXT_MID,
+                 font=FONT_UI_SM).pack(anchor="w")
         f = tk.Frame(parent, bg=SURFACE)
-        f.pack(fill="x", pady=(2, 0))
+        f.pack(fill="x", pady=(2, 4))
         tk.Scale(f, variable=var, from_=from_, to=to, resolution=res,
-                 orient="horizontal", bg=SURFACE, fg=TEXT, troughcolor=SURFACE2,
-                 highlightthickness=0, sliderrelief="flat", bd=0,
-                 activebackground=ACCENT, font=FONT_UI).pack(side="left", fill="x", expand=True)
-        tk.Label(f, textvariable=var, bg=SURFACE, fg=ACCENT,
-                 font=FONT_MONO, width=5).pack(side="right")
+                 orient="horizontal",
+                 bg=SURFACE,
+                 fg=TEXT,
+                 troughcolor="#1e3a5f",
+                 activebackground="#7dd3fc",
+                 highlightbackground=SURFACE,
+                 highlightthickness=0,
+                 sliderrelief="flat",
+                 sliderlength=18,
+                 width=10,             # taller trough = easier to grab
+                 bd=0,
+                 font=FONT_UI_SM).pack(side="left", fill="x", expand=True)
+        tk.Label(f, textvariable=var, bg=SURFACE2, fg=ACCENT,
+                 font=FONT_MONO_SM, width=5, padx=4, pady=2,
+                 highlightbackground=BORDER, highlightthickness=1).pack(side="right", padx=(6, 0))
 
     def _style_tree(self):
         style = ttk.Style()
         style.theme_use("clam")
-        style.configure("Treeview", background=SURFACE, fieldbackground=SURFACE,
-                        foreground=TEXT, rowheight=26, font=FONT_MONO,
+        style.configure("Treeview",
+                        background=SURFACE, fieldbackground=SURFACE,
+                        foreground=TEXT, rowheight=28, font=FONT_MONO_SM,
                         borderwidth=0)
-        style.configure("Treeview.Heading", background=SURFACE2, foreground=TEXT_DIM,
-                        font=(FONT_UI[0], 9, "bold"), relief="flat", padding=(4, 6))
-        style.map("Treeview", background=[("selected", SURFACE2)],
+        style.configure("Treeview.Heading",
+                        background=SURFACE2, foreground=TEXT_MID,
+                        font=(FONT_UI_SM[0], 9, "bold"),
+                        relief="flat", padding=(4, 7))
+        style.map("Treeview",
+                  background=[("selected", SURFACE3)],
                   foreground=[("selected", ACCENT)])
-        style.configure("Vertical.TScrollbar", background=SURFACE2,
-                        troughcolor=SURFACE, arrowcolor=TEXT_DIM, borderwidth=0)
+        style.configure("Vertical.TScrollbar",
+                        background=SURFACE2, troughcolor=SURFACE,
+                        arrowcolor=TEXT_DIM, borderwidth=0)
+
+    def _update_rnd_state(self):
+        """Dim the min/max entries when random delay is disabled."""
+        state = "normal" if self.delay_random_var.get() else "disabled"
+        fg    = ACCENT   if self.delay_random_var.get() else TEXT_DIM
+        self.rnd_min_entry.config(state=state, fg=fg)
+        self.rnd_max_entry.config(state=state, fg=fg)
 
     # ── Sequence Management ──────────────────────────────────────────────────────
     def _refresh_tree(self):
@@ -287,6 +508,8 @@ class AutoMacroApp(tk.Tk):
         for i, s in enumerate(self.steps, 1):
             self.tree.insert("", "end", iid=str(i-1),
                              values=(i, s.x, s.y, s.button.title(), f"{s.delay:.2f}", s.description))
+        if hasattr(self, "step_label"):
+            self.step_label.config(text=f"Steps: {len(self.steps)}")
         self._autosave()  # persist every change automatically
 
     def _add_step(self):
@@ -341,7 +564,7 @@ class AutoMacroApp(tk.Tk):
         step = self.steps[edit_idx] if edit_idx is not None else ClickStep()
         win = tk.Toplevel(self)
         win.title("Edit Step" if edit_idx is not None else "Add Step")
-        win.geometry("440x340")
+        win.geometry("420x330")
         win.configure(bg=BG)
         win.resizable(False, False)
         win.grab_set()
@@ -350,29 +573,29 @@ class AutoMacroApp(tk.Tk):
         fields = {}
 
         def lbl_entry(parent, label, default, row):
-            tk.Label(parent, text=label, bg=BG, fg=TEXT_DIM, font=FONT_UI).grid(
-                row=row, column=0, sticky="w", padx=16, pady=6)
+            tk.Label(parent, text=label, bg=BG, fg=TEXT_MID, font=FONT_UI_SM).grid(
+                row=row, column=0, sticky="w", padx=16, pady=5)
             var = tk.StringVar(value=str(default))
             e = tk.Entry(parent, textvariable=var, bg=SURFACE2, fg=TEXT,
                          insertbackground=TEXT, relief="flat",
                          highlightbackground=BORDER, highlightthickness=1,
-                         font=FONT_MONO, width=18)
-            e.grid(row=row, column=1, padx=(0,16), pady=6)
+                         font=FONT_MONO_SM, width=18)
+            e.grid(row=row, column=1, padx=(0, 16), pady=5)
             return var
 
-        fields["x"]    = lbl_entry(win, "X coordinate:", step.x, 0)
-        fields["y"]    = lbl_entry(win, "Y coordinate:", step.y, 1)
-        fields["delay"]= lbl_entry(win, "Delay before (s):", step.delay, 2)
+        fields["x"]     = lbl_entry(win, "X coordinate:", step.x, 0)
+        fields["y"]     = lbl_entry(win, "Y coordinate:", step.y, 1)
+        fields["delay"] = lbl_entry(win, "Delay before (s):", step.delay, 2)
 
-        tk.Label(win, text="Mouse button:", bg=BG, fg=TEXT_DIM, font=FONT_UI).grid(
-            row=3, column=0, sticky="w", padx=16, pady=6)
+        tk.Label(win, text="Mouse button:", bg=BG, fg=TEXT_MID,
+                 font=FONT_UI_SM).grid(row=3, column=0, sticky="w", padx=16, pady=5)
         btn_var = tk.StringVar(value=step.button)
         btn_frame = tk.Frame(win, bg=BG)
-        btn_frame.grid(row=3, column=1, sticky="w", pady=6)
+        btn_frame.grid(row=3, column=1, sticky="w", pady=5)
         for b in ("left", "right", "middle"):
             tk.Radiobutton(btn_frame, text=b.title(), variable=btn_var, value=b,
-                           bg=BG, fg=TEXT, selectcolor=SURFACE2,
-                           activebackground=BG, font=FONT_UI).pack(side="left", padx=4)
+                           bg=BG, fg=TEXT, selectcolor=SURFACE3,
+                           activebackground=BG, font=FONT_UI_SM).pack(side="left", padx=3)
 
         fields["description"] = lbl_entry(win, "Note (optional):", step.description, 4)
 
@@ -384,9 +607,14 @@ class AutoMacroApp(tk.Tk):
             except Exception:
                 pass
 
-        tk.Button(win, text="📍 Use Current Mouse Position", bg=SURFACE2, fg=ACCENT,
-                  relief="flat", font=FONT_UI, cursor="hand2",
-                  command=fill_from_capture).grid(row=5, column=0, columnspan=2, pady=8)
+        pos_btn = tk.Button(win, text="📍  Use Current Mouse Position",
+                            bg=SURFACE2, fg=ACCENT, relief="flat",
+                            font=FONT_UI_SM, cursor="hand2",
+                            highlightbackground=BORDER, highlightthickness=1,
+                            command=fill_from_capture)
+        pos_btn.grid(row=5, column=0, columnspan=2, pady=8, padx=16, sticky="ew")
+        pos_btn.bind("<Enter>", lambda e: pos_btn.config(bg=SURFACE3))
+        pos_btn.bind("<Leave>", lambda e: pos_btn.config(bg=SURFACE2))
 
         def save():
             try:
@@ -398,7 +626,9 @@ class AutoMacroApp(tk.Tk):
                     description=fields["description"].get()
                 )
             except ValueError:
-                messagebox.showerror("Invalid Input", "X, Y must be integers and Delay must be a number.", parent=win)
+                messagebox.showerror("Invalid Input",
+                                     "X, Y must be integers and Delay must be a number.",
+                                     parent=win)
                 return
             if edit_idx is not None:
                 self.steps[edit_idx] = s
@@ -407,17 +637,20 @@ class AutoMacroApp(tk.Tk):
             self._refresh_tree()
             win.destroy()
 
-        tk.Button(win, text="✔ Save Step", bg=ACCENT, fg=BG,
-                  relief="flat", font=(FONT_UI[0], 10, "bold"), cursor="hand2",
-                  padx=12, pady=8, command=save).grid(row=6, column=0, columnspan=2, pady=12)
+        save_btn = tk.Button(win, text="✔  Save Step", bg=ACCENT, fg=BG,
+                             relief="flat", font=FONT_UI_B, cursor="hand2",
+                             padx=12, pady=8, command=save)
+        save_btn.grid(row=6, column=0, columnspan=2, pady=(4, 12), padx=16, sticky="ew")
+        save_btn.bind("<Enter>", lambda e: save_btn.config(bg="#5ccfff"))
+        save_btn.bind("<Leave>", lambda e: save_btn.config(bg=ACCENT))
 
     # ── Capture ──────────────────────────────────────────────────────────────────
     def _start_capture(self):
         if self.capturing:
             return
         self.capturing = True
-        self.cap_btn.config(text="📍 Click anywhere...", fg=WARN)
-        self.cap_coords.config(text="waiting for click...")
+        self.cap_btn.config(text="📍  Click anywhere...", fg=WARN)
+        self.cap_coords.config(text="waiting for click...", fg=TEXT_DIM)
 
         def on_click(x, y, button, pressed):
             if pressed:
@@ -429,9 +662,8 @@ class AutoMacroApp(tk.Tk):
 
     def _on_captured(self, x, y):
         self.capturing = False
-        self.cap_btn.config(text="🎯 Capture Position", fg=ACCENT2)
-        self.cap_coords.config(text=f"X: {x}  Y: {y}", fg=ACCENT)
-        # Ask if user wants to add as new step
+        self.cap_btn.config(text="🎯  Capture Position", fg=ACCENT2)
+        self.cap_coords.config(text=f"X: {x}   Y: {y}", fg=ACCENT)
         if messagebox.askyesno("Add Captured Position",
                                f"Captured ({x}, {y}).\nAdd as a new step?"):
             self.steps.append(ClickStep(x=x, y=y))
@@ -540,8 +772,9 @@ class AutoMacroApp(tk.Tk):
             return
         self.running = True
         self.loop_count = 0
-        self.status_var.set("● Running")
-        self.run_btn.config(text="■  STOP", fg=DANGER)
+        self.status_var.set("Running")
+        self.run_btn.config(text="■   STOP", bg=DANGER, fg=TEXT,
+                            activebackground="#c0392b")
         self._update_status_color()
         self.macro_thread = threading.Thread(target=self._run_loop, daemon=True)
         self.macro_thread.start()
@@ -549,7 +782,8 @@ class AutoMacroApp(tk.Tk):
     def _stop(self):
         self.running = False
         self.status_var.set("Idle")
-        self.run_btn.config(text="▶  START", fg=ACCENT2)
+        self.run_btn.config(text="▶   START", bg=ACCENT2, fg=BG,
+                            activebackground="#2cb885")
         self._update_status_color()
 
     def _run_loop(self):
@@ -565,11 +799,27 @@ class AutoMacroApp(tk.Tk):
             for step in self.steps:
                 if not self.running:
                     break
-                time.sleep(max(0, step.delay))
+                if self.delay_random_var.get():
+                    lo = self.delay_min_var.get()
+                    hi = self.delay_max_var.get()
+                    if lo > hi:
+                        lo, hi = hi, lo
+                    actual_delay = random.uniform(lo, hi)
+                else:
+                    actual_delay = step.delay
+                time.sleep(max(0, actual_delay))
                 if not self.running:
                     break
                 try:
-                    pyautogui.click(step.x, step.y, button=step.button)
+                    jitter = self.jitter_var.get()
+                    if jitter > 0:
+                        angle  = random.uniform(0, 2 * math.pi)
+                        radius = random.uniform(0, jitter)
+                        cx = int(step.x + radius * math.cos(angle))
+                        cy = int(step.y + radius * math.sin(angle))
+                    else:
+                        cx, cy = step.x, step.y
+                    pyautogui.click(cx, cy, button=step.button)
                 except pyautogui.FailSafeException:
                     self.after(0, self._emergency_stop)
                     return
@@ -595,8 +845,12 @@ class AutoMacroApp(tk.Tk):
         messagebox.showwarning("Emergency Stop", "Macro stopped: mouse moved to corner (failsafe triggered).")
 
     def _update_status_color(self):
-        color = ACCENT2 if self.running else TEXT_DIM
-        self.status_label.config(fg=color)
+        if self.running:
+            self.status_dot.config(fg=ACCENT2)
+            self.status_label.config(fg=ACCENT2)
+        else:
+            self.status_dot.config(fg=TEXT_DIM)
+            self.status_label.config(fg=TEXT_MID)
 
     # ── Persistence ──────────────────────────────────────────────────────────────
     def _save_sequence(self):
@@ -609,6 +863,10 @@ class AutoMacroApp(tk.Tk):
         data = {
             "loop_delay": self.loop_delay_var.get(),
             "repeat": self.repeat_var.get(),
+            "jitter": self.jitter_var.get(),
+            "delay_random": self.delay_random_var.get(),
+            "delay_min": self.delay_min_var.get(),
+            "delay_max": self.delay_max_var.get(),
             "steps": [s.to_dict() for s in self.steps]
         }
         with open(path, "w") as f:
@@ -626,6 +884,10 @@ class AutoMacroApp(tk.Tk):
                 data = json.load(f)
             self.loop_delay_var.set(data.get("loop_delay", 1.0))
             self.repeat_var.set(data.get("repeat", "∞"))
+            self.jitter_var.set(data.get("jitter", 0))
+            self.delay_random_var.set(data.get("delay_random", False))
+            self.delay_min_var.set(data.get("delay_min", 0.3))
+            self.delay_max_var.set(data.get("delay_max", 0.7))
             self.steps = [ClickStep.from_dict(d) for d in data.get("steps", [])]
             self._refresh_tree()
             messagebox.showinfo("Loaded", f"Loaded {len(self.steps)} steps from file.")
@@ -641,6 +903,10 @@ class AutoMacroApp(tk.Tk):
                 "repeat":        self.repeat_var.get(),
                 "hotkey":        self.hotkey_var.get(),
                 "record_hotkey": self.record_hotkey_var.get(),
+                "jitter":        self.jitter_var.get(),
+                "delay_random":  self.delay_random_var.get(),
+                "delay_min":     self.delay_min_var.get(),
+                "delay_max":     self.delay_max_var.get(),
                 "steps":         [s.to_dict() for s in self.steps],
             }
             with open(AUTOSAVE_PATH, "w") as f:
@@ -659,6 +925,10 @@ class AutoMacroApp(tk.Tk):
             self.repeat_var.set(data.get("repeat", "∞"))
             self.hotkey_var.set(data.get("hotkey", "F6"))
             self.record_hotkey_var.set(data.get("record_hotkey", "F8"))
+            self.jitter_var.set(data.get("jitter", 0))
+            self.delay_random_var.set(data.get("delay_random", False))
+            self.delay_min_var.set(data.get("delay_min", 0.3))
+            self.delay_max_var.set(data.get("delay_max", 0.7))
             self.steps = [ClickStep.from_dict(d) for d in data.get("steps", [])]
             self._refresh_tree()
             self._setup_hotkey()
