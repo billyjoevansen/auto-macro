@@ -1,40 +1,502 @@
 {
-  "loop_delay": 3.3,
+  "loop_delay": 2.9,
   "repeat": "\u221e",
   "hotkey": "F2",
   "record_hotkey": "F3",
-  "jitter": 50,
+  "jitter": 2,
   "delay_random": true,
   "delay_min": 0.1,
-  "delay_max": 3.0,
+  "delay_max": 0.5,
   "steps": [
     {
-      "x": 1157,
-      "y": 330,
-      "delay": 2.0,
+      "x": 856,
+      "y": 963,
+      "delay": 0.1,
       "button": "left",
       "description": "recorded"
     },
     {
-      "x": 1342,
-      "y": 510,
-      "delay": 3.0,
+      "x": 121,
+      "y": 1019,
+      "delay": 0.5,
       "button": "left",
       "description": "recorded"
     },
     {
-      "x": 1335,
-      "y": 773,
-      "delay": 4.0,
+      "x": 304,
+      "y": 875,
+      "delay": 0.5,
       "button": "left",
       "description": "recorded"
     },
     {
-      "x": 996,
-      "y": 1095,
+      "x": 1670,
+      "y": 1031,
+      "delay": 0.5,
+      "button": "left",
+      "description": "Tombol Serang"
+    },
+    {
+      "x": 344,
+      "y": 1044,
       "delay": 5.0,
       "button": "left",
+      "description": "pilih unit 1"
+    },
+    {
+      "x": 337,
+      "y": 1065,
+      "delay": 0.01,
+      "button": "left",
       "description": "recorded"
+    },
+    {
+      "x": 330,
+      "y": 685,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 355,
+      "y": 723,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 386,
+      "y": 755,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 414,
+      "y": 785,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 436,
+      "y": 805,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 454,
+      "y": 822,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 480,
+      "y": 834,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 511,
+      "y": 852,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1249,
+      "y": 931,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1296,
+      "y": 894,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1320,
+      "y": 871,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1360,
+      "y": 842,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1387,
+      "y": 814,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1407,
+      "y": 794,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1426,
+      "y": 767,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1448,
+      "y": 747,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 466,
+      "y": 1041,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 354,
+      "y": 747,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 414,
+      "y": 789,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 435,
+      "y": 800,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 458,
+      "y": 821,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1323,
+      "y": 839,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1360,
+      "y": 822,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1377,
+      "y": 807,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1424,
+      "y": 776,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 580,
+      "y": 1041,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 354,
+      "y": 700,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 365,
+      "y": 747,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 377,
+      "y": 755,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 418,
+      "y": 776,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 448,
+      "y": 802,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 471,
+      "y": 827,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 492,
+      "y": 844,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1252,
+      "y": 925,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1282,
+      "y": 900,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1320,
+      "y": 868,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1360,
+      "y": 831,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1390,
+      "y": 801,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1428,
+      "y": 762,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 706,
+      "y": 1073,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 490,
+      "y": 799,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 845,
+      "y": 1034,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 539,
+      "y": 831,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 950,
+      "y": 1041,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1172,
+      "y": 900,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1063,
+      "y": 1058,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1243,
+      "y": 841,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1170,
+      "y": 1037,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1264,
+      "y": 854,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 827,
+      "y": 1041,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 941,
+      "y": 1039,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1061,
+      "y": 1030,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1183,
+      "y": 1029,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1313,
+      "y": 1049,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 643,
+      "y": 576,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 734,
+      "y": 664,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1015,
+      "y": 742,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1119,
+      "y": 655,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1200,
+      "y": 597,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1421,
+      "y": 1016,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 854,
+      "y": 668,
+      "delay": 0.01,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 145,
+      "y": 924,
+      "delay": 40.0,
+      "button": "left",
+      "description": "akhiri serangan"
+    },
+    {
+      "x": 1107,
+      "y": 775,
+      "delay": 0.5,
+      "button": "left",
+      "description": "oke"
+    },
+    {
+      "x": 933,
+      "y": 1001,
+      "delay": 0.5,
+      "button": "left",
+      "description": "ke beranda"
     }
   ]
 }

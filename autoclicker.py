@@ -66,7 +66,7 @@ FONT_HEAD    = ("Segoe UI", 17, "bold")   if _is_win else ("Ubuntu", 17, "bold")
 
 # ─── Data Model ─────────────────────────────────────────────────────────────────
 class ClickStep:
-    def __init__(self, x=0, y=0, delay=0.5, button="left", description=""):
+    def __init__(self, x=0, y=0, delay=0.1, button="left", description=""):
         self.x = x
         self.y = y
         self.delay = delay          # seconds BEFORE this click
@@ -727,7 +727,7 @@ class AutoMacroApp(tk.Tk):
             x, y = pyautogui.position()
         except Exception:
             return
-        step = ClickStep(x=x, y=y, delay=0.5, button="left", description="recorded")
+        step = ClickStep(x=x, y=y, delay=0.01, button="left", description="deploy")
         self.steps.append(step)
         self._refresh_tree()
         # Select the new row and scroll to it
