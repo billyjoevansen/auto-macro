@@ -792,7 +792,7 @@ class AutoMacroApp(tk.Tk):
                     hi = self.delay_max_var.get()
                     if lo > hi:
                         lo, hi = hi, lo
-                    actual_delay = random.uniform(lo, hi)
+                    actual_delay = step.delay + random.uniform(lo, hi)
                 else:
                     actual_delay = step.delay
                 time.sleep(max(0, actual_delay))

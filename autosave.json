@@ -1,11 +1,40 @@
 {
-  "loop_delay": 13.5,
+  "loop_delay": 3.3,
   "repeat": "\u221e",
-  "hotkey": "ESC",
+  "hotkey": "F2",
   "record_hotkey": "F3",
-  "jitter": 0,
-  "delay_random": false,
-  "delay_min": 0.3,
-  "delay_max": 0.7,
-  "steps": []
+  "jitter": 50,
+  "delay_random": true,
+  "delay_min": 0.1,
+  "delay_max": 3.0,
+  "steps": [
+    {
+      "x": 1157,
+      "y": 330,
+      "delay": 2.0,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1342,
+      "y": 510,
+      "delay": 3.0,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 1335,
+      "y": 773,
+      "delay": 4.0,
+      "button": "left",
+      "description": "recorded"
+    },
+    {
+      "x": 996,
+      "y": 1095,
+      "delay": 5.0,
+      "button": "left",
+      "description": "recorded"
+    }
+  ]
 }
